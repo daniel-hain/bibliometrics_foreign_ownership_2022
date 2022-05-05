@@ -17,14 +17,14 @@ PY_min <-1990 # Start year
 ############################################################################
 
 # Initial Filter
-cutof_edge_bib <- 2
-cutof_node_bib <- 5
+cutof_edge_bib <- 5
+cutof_node_bib <- 105
 
 cutof_edge_pct_bib <- 0.00
 cutof_node_pct_bib <- 0.00
 
 # community detection
-com_size_bib <- 20
+com_size_bib <- 100
 
 ############################################################################
 #  Network Co-Citation

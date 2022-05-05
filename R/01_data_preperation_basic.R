@@ -23,8 +23,10 @@ library(tidygraph)
 # Select Seed articels
 ############################################################################
 
+files <- list.files(path = '../input/', pattern = 'scopus_',full.names = TRUE)
+
 # Load bibliographic data
-M <- convert2df(file = '../../data/EIST_scopus.bib', dbsource = "scopus", format = "bibtex")
+M <- convert2df(file = files, dbsource = "scopus", format = "bibtex")
 
 # Extract Meta Tags #TODO: Maybe more?
 M %<>% metaTagExtraction(Field = "AU_CO", aff.disamb = TRUE, sep = ";")
@@ -38,7 +40,11 @@ M %<>% metaTagExtraction(Field = "CR_SO", aff.disamb = TRUE, sep = ";")
 M %<>% rownames_to_column('XX') %>% 
   mutate(XX = paste(str_extract(XX, pattern = ".*\\d{4}"), str_sub(TI, 1,25)) %>% str_replace_all("[^[:alnum:]]", " ") %>% str_squish() %>% str_replace_all(" ", "_") %>% make.unique(sep='_'))  
 
-# Number of cited references
+# Number of cited references and citations
+M %<>% 
+  mutate(TC_year = TC / (2023 - PY)) %>%
+  filter(TC_year <= 1)
+
 M %<>%
   mutate(CR_n = CR %>% str_count(';')) %>%
   filter(CR_n > 5)
@@ -54,6 +60,7 @@ rownames(M) <- M$XX
 #€M %<>% column_to_rownames('XX')
 M %>% saveRDS("../temp/M.RDS")
 # M <- read_rds("../temp/M.RDS")
+
 ############################################################################
 # Networks Bibliographic
 ############################################################################
@@ -69,15 +76,15 @@ g_bib <- mat_bib %>% igraph::graph_from_adjacency_matrix(mode = "undirected", we
 
 # Restrict the network
 g_bib <- g_bib %E>% 
-  filter(weight >= cutof_edge_bib) %N>%
-  # filter(percent_rank(weight) >= cutof_edge_pct_bib) %N>%
+  filter(weight >= cutof_edge_bib) %E>%
+  filter(percent_rank(weight) >= cutof_edge_pct_bib) %N>%
   filter(!node_is_isolated()) %N>%
-  mutate(dgr = centrality_degree(weights = weight)) 
-  # %N>% filter(dgr >= cutof_node_bib) 
-  # %N>% filter(percent_rank(dgr) >= cutof_node_pct_bib)
+  mutate(dgr = centrality_degree(weights = weight)) %N>% 
+  filter(dgr >= cutof_node_bib)  %N>% 
+  filter(percent_rank(dgr) >= cutof_node_pct_bib)
 
 # # Inspect
-g_bib %N>% mutate(dgr = centrality_degree(weights = weight)) %>% as_tibble() %>% skimr::skim()
+g_bib %N>% as_tibble() %>% skimr::skim()
 g_bib %E>% as_tibble() %>% skimr::skim()
 
 # Community Detection
@@ -86,6 +93,8 @@ g_bib <- g_bib %N>%
   morph(to_split, com) %>% 
   mutate(dgr_int = centrality_degree(weights = weight)) %N>%
   unmorph()
+
+g_bib %N>% as_tibble() %>% count(com)
 
 # Community size restriction
 g_bib <- g_bib %N>%
@@ -135,7 +144,7 @@ g_bib_agg %>% saveRDS("../temp/g_bib_agg.RDS")
 rm(mat_bib, g_bib, com_size_bib, cutof_edge_bib, cutof_node_bib, g_bib_agg)
 
 ############################################################################
-# Network Cocitation
+# Network Cocitation TODO
 ############################################################################
 
 mat_cit <- M %>%
@@ -341,16 +350,16 @@ text_dtm <- text_tidy %>%
 # # Finding nummer of topics
 # library("ldatuning")
 # 
-# find_topics <- text_dtm %>% 
-#   FindTopicsNumber(
-#     topics = seq(from = 2, to = 15, by = 1),
-#     metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
-#     method = "Gibbs",
-#     control = list(seed = 77),
-#     mc.cores = 4L,
-#     verbose = TRUE
-# )
-# 
+find_topics <- text_dtm %>%
+  FindTopicsNumber(
+    topics = seq(from = 2, to = 10, by = 1),
+    metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+    method = "Gibbs",
+    control = list(seed = 77),
+    mc.cores = 4L,
+    verbose = TRUE
+)
+
 # find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
 
 # LDA
