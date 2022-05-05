@@ -348,14 +348,14 @@ text_dtm <- text_tidy %>%
   cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
 
 # # Finding nummer of topics
-# library("ldatuning")
-# 
+library("ldatuning")
+
 find_topics <- text_dtm %>%
   FindTopicsNumber(
-    topics = seq(from = 2, to = 10, by = 1),
+    topics = seq(from = 4, to = 10, by = 1),
     metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
     method = "Gibbs",
-    control = list(seed = 77),
+    control = list(seed = 1337),
     mc.cores = 4L,
     verbose = TRUE
 )
