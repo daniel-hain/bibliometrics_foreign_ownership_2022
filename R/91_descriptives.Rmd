@@ -1,5 +1,5 @@
 ---
-title: "Transitions Bibliometrics 2020"
+title: "Bibliometrics: Foreign Ownership 2022"
 author: "Daniel S. Hain"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -14,6 +14,7 @@ output:
 
 ```{r setup, include=FALSE}
 ### Generic preamble
+rm(list=ls())
 Sys.setenv(LANG = "en")
 options(scipen = 5)
 set.seed(1337)
@@ -129,13 +130,13 @@ text_lda_gamma <- text_lda %>% tidy(matrix = "gamma")
 topic_names <- tibble( 
   topic = 1:(text_lda_gamma %>% pull(topic) %>% n_distinct()),
   topic_name = 
-    #1:(text_lda_gamma %>% pull(topic) %>% n_distinct())
-    c('1 TIS & Markets',
-      '2 ? Undefined ',
-      '3 (Energy) Economics',
-      '4 ? undefined',
-      '5 Geography & Institutions',
-      '6 ? Transitions (general)')
+    1:(text_lda_gamma %>% pull(topic) %>% n_distinct())
+    #c('1 TIS & Markets',
+    #  '2 ? Undefined ',
+    #  '3 (Energy) Economics',
+    #  '4 ? undefined',
+    #  '5 Geography & Institutions',
+    #  '6 ? Transitions (general)')
 )
 
 text_lda_beta %<>% left_join(topic_names, by = 'topic')
@@ -192,11 +193,7 @@ text_lda_gamma %>%
 ## LDAViz
 Here you find a nice way of exploring topics via the `LDAVIz` methodology of visulizing the result of an LDA. It dispolays all topics in a 2 dimensional TSNE (similar to PCA, but optimized for graphical illustration in 2d), and also gives a nice visual representation over the topics top-word distribution and overall frequencies of this words in the corpus. The $\lambda$ parameter regulates the importance-ordering of the topwords. High $\lambda$ order words by the highest propability to appear in the topic to the lowest (independent of the overall word popularity in the corpus), whle low $\lambda$ emphasize words which are very specific to the topic, and rarely appear in others.
 
-Play a bit around. Since it would be here a bit condensed, here in fullscreen for a better overview. I also provide besides the 6 topics version I presented above a version with 8 or 10 topics to inspect which fits best.
-
-* [6 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz6/) 
-* [8 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz8/) 
-* [10 Topics](https://daniel-hain.github.io/bibliometrics_EIST_2021/output/LDAviz10/) 
+Play a bit around. Since it would be here a bit condensed, here in fullscreen for a better overview.
 
 <!-- ####################################################################################### -->
 <!-- ####################################################################################### -->
@@ -219,16 +216,16 @@ C_nw <- readRDS("../../temp/C_nw.RDS")
 com_names_cit <- tibble( 
   com = 1:(C_nw %>% pull(com) %>% n_distinct()),
   com_name = 
-    # 1:(C_nw %>% pull(com) %>% n_distinct())
-    c('1 MLP',
-    '2 TIS',
-    '3 Geography',
-    '4 Intermediaries',
-    '5 Modelling',
-    '6 ? Undefined (diffusion)',
-    '7 Sociology1',
-    '8 Management',
-    '9 Sharing Economy')
+    1:(C_nw %>% pull(com) %>% n_distinct())
+    #c('1 MLP',
+    #'2 TIS',
+    #'3 Geography',
+    #'4 Intermediaries',
+    #'5 Modelling',
+    #'6 ? Undefined (diffusion)',
+    #'7 Sociology1',
+    #'8 Management',
+    #'9 Sharing Economy')
 )
 ```
 
@@ -323,12 +320,11 @@ M_bib <- readRDS("../../temp/M_bib.RDS") %>% as_tibble()
 com_names_bib <- tibble( 
   com = 1:(M_bib %>% pull(com) %>% n_distinct()),
   com_name = 
-    #1:(M_bib %>% pull(com) %>% n_distinct())
-    c('1 MLP / TIS', 
-      '2 MLP',
-      '3 Geography',
-      '4 Policy'
-  )
+    1:(M_bib %>% pull(com) %>% n_distinct())
+    #c('1 MLP / TIS', 
+    #  '2 MLP',
+    #  '3 Geography',
+    #  '4 Policy')
 )
 ```
 
@@ -476,7 +472,6 @@ More recent articles have a higher pool of possible references to co-cite to, he
 <!-- ####################################################################################### -->
 
 
-<!--- 
 # Additional analysis
 
 ## Authors, Themes & Journals
@@ -489,12 +484,12 @@ M_threefield <- readRDS("../../temp/M_threefield.RDS")
 M_threefield
 ```
 
-
 ```{r}
 rm(M_threefield)
 ```
 
 
+<!--- 
 
 ### Conceptual trajectories: Historical citation path analysis
 

@@ -148,8 +148,12 @@ rm(mat_bib, g_bib, com_size_bib, cutof_edge_bib, cutof_node_bib, g_bib_agg)
 ############################################################################
 
 mat_cit <- M %>%
+  semi_join(M_bib, by = 'XX') %>%
   as.data.frame() %>% 
   biblioNetwork(analysis = "co-citation", network = "references", sep = ";", shortlabel = FALSE)
+
+mat_cit %>% saveRDS("../temp/mat_cit.RDS")
+# mat_cit <- readRDS("../temp/mat_cit.RDS")
 
 g_cit <- mat_cit %>% igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE) %>% 
   igraph::simplify() %>%
@@ -157,12 +161,12 @@ g_cit <- mat_cit %>% igraph::graph_from_adjacency_matrix(mode = "undirected", we
 
 # Restrict the network
 g_cit <- g_cit %E>% 
-  filter(weight >= cutof_edge_cit) %N>%
-  # filter(percent_rank(weight) >= cutof_edge_pct_cit) %N>%
+  filter(weight >= cutof_edge_cit) %E>%
+  filter(percent_rank(weight) >= cutof_edge_pct_cit) %N>%
   filter(!node_is_isolated()) %N>%
   mutate(dgr = centrality_degree(weights = weight)) %N>%
-  filter(dgr >= cutof_node_cit) 
-  # %>% filter(percent_rank(dgr) >= cutof_node_pct_cit)
+  filter(dgr >= cutof_node_cit) %N>% 
+  filter(percent_rank(dgr) >= cutof_node_pct_cit)
 
 ## JACCARD weighting # NOTE: Only in cit network
 #g_cit <- g_cit %E>%
@@ -186,6 +190,8 @@ g_cit <- g_cit %N>%
   mutate(com = ifelse(com_n >= com_size_cit, com, NA) ) %>%
   select(-com_n)  
 
+g_cit %N>% as_tibble() %>% count(com)
+  
 # Delete nodes withou community
 g_cit <- g_cit %N>%
   filter(!is.na(com))
@@ -193,9 +199,6 @@ g_cit <- g_cit %N>%
 # Update degree
 g_cit <- g_cit %N>%
   mutate(dgr = centrality_degree(weights = weight))
-
-# Check number of coms
-g_cit %N>% as_tibble() %>% count(com)
 
 # Save the objects we need lateron
 g_cit %>% saveRDS("../temp/g_cit.RDS")
@@ -220,7 +223,7 @@ g_cit_agg <- g_cit %>%
 saveRDS(g_cit_agg, "../temp/g_cit_agg.RDS")
 rm(mat_cit, g_cit, g_cit_agg)
 
-#### 2 mode network 
+#### 2 mode network TODO
 rownames(M) <- M %>% pull(XX)
 m_2m <- M %>% as.data.frame() %>% cocMatrix(Field = "CR", sep = ";", short = FALSE)
 
@@ -348,22 +351,22 @@ text_dtm <- text_tidy %>%
   cast_dtm(document, term, n) %>% tm::removeSparseTerms(sparse = .99)
 
 # # Finding nummer of topics
-library("ldatuning")
-
-find_topics <- text_dtm %>%
-  FindTopicsNumber(
-    topics = seq(from = 4, to = 10, by = 1),
-    metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
-    method = "Gibbs",
-    control = list(seed = 1337),
-    mc.cores = 4L,
-    verbose = TRUE
-)
-
-# find_topics %>% FindTopicsNumber_plot() # Taking 6 topics
+# library("ldatuning")
+# 
+# find_topics <- text_dtm %>%
+#   FindTopicsNumber(
+#     topics = seq(from = 4, to = 10, by = 1),
+#     metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+#     method = "Gibbs",
+#     control = list(seed = 1337),
+#     mc.cores = 4L,
+#     verbose = TRUE
+# )
+# 
+# find_topics %>% FindTopicsNumber_plot() # Taking 5 topics
 
 # LDA
-text_lda <- text_dtm %>% LDA(k = 6, method= "Gibbs", control = list(seed = 1337))
+text_lda <- text_dtm %>% LDA(k = 5, method= "Gibbs", control = list(seed = 1337))
 
 
 ### LDA Viz
@@ -388,8 +391,8 @@ rm(text_tidy, text_dtm, text_lda)
 CR <- M %>% citations(field = "article", sep = ";")
 CR %>% saveRDS("../temp/CR.RDS")
 
-CRL <- M %>% localCitations(sep = ";") # For some reason takes forever...
-CRL %>% saveRDS("../temp/CRL.RDS")
+#CRL <- M %>% localCitations(sep = ";") # For some reason takes forever...
+#CRL %>% saveRDS("../temp/CRL.RDS")
 
 rm(CR, CRL)
 
@@ -415,16 +418,16 @@ rm(histResults)
 ############################################################################
 # Other stuff
 ############################################################################
-# M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot(fields = c("AU", "DE", "CR_SO"), n = c(20, 20, 10))
-# M_threefield
+M_threefield <- M %>% as.data.frame() %>% threeFieldsPlot(fields = c("AU", "DE", "CR_SO"), n = c(20, 20, 10))
+M_threefield
 
-# M_threefield %>% saveRDS("../temp/M_threefield.RDS")
-# rm(M_threefield)
+M_threefield %>% saveRDS("../temp/M_threefield.RDS")
+rm(M_threefield)
 
-# M %>% authorProdOverTime(k = 10, graph = TRUE)
-# M %>% rpys(sep = ";", graph = T)
-# M %>% thematicMap()
-# M_them_evo <- M %>% thematicEvolution(years = c(2000, 2019))
+#M %>% authorProdOverTime(k = 10, graph = TRUE)
+#M %>% rpys(sep = ";", graph = T)
+#M %>% thematicMap()
+#M_them_evo <- M %>% thematicEvolution(years = c(2000, 2019))
 
 
 ############################################################################
