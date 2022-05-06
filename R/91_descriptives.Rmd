@@ -53,6 +53,7 @@ knitr::opts_chunk$set(echo = FALSE,
 
 ```{r}
 M <- readRDS("../../temp/M.RDS") %>% as_tibble()
+M %<>% distinct(DI, .keep_all = TRUE)
 ```
 
 # General Overview over EIST articles
@@ -74,7 +75,7 @@ results %>% plot(k = 10, pause = FALSE)
 
 ```{r}
 prod_AU <- M %>% authorProdOverTime(k = 10, graph = TRUE)
-plot(prod_AU$graph)
+#plot(prod_AU$graph)
 ```
 
 ```{r}

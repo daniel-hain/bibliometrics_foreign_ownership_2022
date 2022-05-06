@@ -36,6 +36,9 @@ M %<>% metaTagExtraction(Field = "SR", aff.disamb = TRUE, sep = ";")
 M %<>% metaTagExtraction(Field = "CR_AU", aff.disamb = TRUE, sep = ";")
 M %<>% metaTagExtraction(Field = "CR_SO", aff.disamb = TRUE, sep = ";")
 
+# Delete duplicates (Better use EID)
+M %<>% distinct(DI, .keep_all = TRUE)
+
 # create label
 M %<>% rownames_to_column('XX') %>% 
   mutate(XX = paste(str_extract(XX, pattern = ".*\\d{4}"), str_sub(TI, 1,25)) %>% str_replace_all("[^[:alnum:]]", " ") %>% str_squish() %>% str_replace_all(" ", "_") %>% make.unique(sep='_'))  
