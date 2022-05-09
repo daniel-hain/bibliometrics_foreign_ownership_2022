@@ -17,11 +17,11 @@ PY_min <-1990 # Start year
 ############################################################################
 
 # Initial Filter
-cutof_edge_bib <- 5
-cutof_node_bib <- 10
+cutof_edge_bib <- 2
+cutof_node_bib <- 5
 
-cutof_edge_pct_bib <- 0.00
-cutof_node_pct_bib <- 0.00
+cutof_edge_pct_bib <- 0.5
+cutof_node_pct_bib <- 0.5
 
 # community detection
 com_size_bib <- 100
@@ -31,11 +31,11 @@ com_size_bib <- 100
 ############################################################################
 
 # Initial Filter
-cutof_edge_cit <- 5
-cutof_node_cit <- 20
+cutof_edge_cit <- 2
+cutof_node_cit <- 5
 
-cutof_edge_pct_cit <- 0.00
-cutof_node_pct_cit <- 0.00
+cutof_edge_pct_cit <- 0.5
+cutof_node_pct_cit <- 0.5
 
 # community detection
-com_size_cit <- 100
+com_size_cit <- 500

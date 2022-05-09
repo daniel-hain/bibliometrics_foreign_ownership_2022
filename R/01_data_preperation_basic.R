@@ -27,6 +27,7 @@ files <- list.files(path = '../input/', pattern = 'scopus_',full.names = TRUE)
 
 # Load bibliographic data
 M <- convert2df(file = files, dbsource = "scopus", format = "bibtex")
+rm(files)
 
 # Extract Meta Tags #TODO: Maybe more?
 M %<>% metaTagExtraction(Field = "AU_CO", aff.disamb = TRUE, sep = ";")
@@ -37,16 +38,11 @@ M %<>% metaTagExtraction(Field = "CR_AU", aff.disamb = TRUE, sep = ";")
 M %<>% metaTagExtraction(Field = "CR_SO", aff.disamb = TRUE, sep = ";")
 
 # Delete duplicates (Better use EID)
-M %<>% distinct(DI, .keep_all = TRUE)
+#M %<>% distinct(DI, .keep_all = TRUE)
 
 # create label
 M %<>% rownames_to_column('XX') %>% 
   mutate(XX = paste(str_extract(XX, pattern = ".*\\d{4}"), str_sub(TI, 1,25)) %>% str_replace_all("[^[:alnum:]]", " ") %>% str_squish() %>% str_replace_all(" ", "_") %>% make.unique(sep='_'))  
-
-# Number of cited references and citations
-M %<>% 
-  mutate(TC_year = TC / (2023 - PY)) %>%
-  filter(TC_year <= 1)
 
 M %<>%
   mutate(CR_n = CR %>% str_count(';')) %>%
@@ -54,13 +50,25 @@ M %<>%
 
 # Abstract
 M %<>%
-  filter(AB != '')
+  filter(AB != '') %>%
+  filter(AB %>% str_length() > 25)
 
 # Setting rownames
 rownames(M) <- M$XX
 
+M %>% skimr::skim()
+
+# Save whole compilation
+M %>% saveRDS("../temp/M_all.RDS")
+# M <- read_rds("../temp/M.RDS")
+
+# Number of cited references and citations
+M %<>% 
+  mutate(TC_year = TC / (2023 - PY)) %>%
+  filter(TC_year >= 1) %>%
+  filter(percent_rank(TC_year) >= 0.5)
+
 # Save 
-#€M %<>% column_to_rownames('XX')
 M %>% saveRDS("../temp/M.RDS")
 # M <- read_rds("../temp/M.RDS")
 
@@ -76,28 +84,41 @@ mat_bib <- M  %>% biblioNetwork(analysis = "coupling", network = "references", s
 g_bib <- mat_bib %>% igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE) %>% 
   igraph::simplify() %>%
   as_tbl_graph(directed = FALSE) # %N>% left_join(M %>% select(XX, SR, PY, TC, J9), by = c("name" = "XX")) %>% mutate(id = 1:n()) 
+rm(mat_bib)
 
 # Restrict the network
 g_bib <- g_bib %E>% 
-  filter(weight >= cutof_edge_bib) %E>%
-  filter(percent_rank(weight) >= cutof_edge_pct_bib) %N>%
+  filter(weight >= cutof_edge_bib)
+
+g_bib <- g_bib %N>%
   filter(!node_is_isolated()) %N>%
   mutate(dgr = centrality_degree(weights = weight)) %N>% 
-  filter(dgr >= cutof_node_bib)  %N>% 
-  filter(percent_rank(dgr) >= cutof_node_pct_bib)
+  filter(dgr >= cutof_node_bib)
+
+# JAccard weighting
+g_bib <- g_bib %N>% left_join(M %>% select(XX, PY, CR_n, TC_year), by = c("name" = "XX")) %E>% 
+  mutate(weight_jac = weight / (.N()$CR_n[from] + .N()$CR_n[to] - weight) ) %E>%
+  mutate(weight_jac = if_else(weight_jac > 1, 1, weight_jac) ) %N>%
+  mutate(dgr_jac = centrality_degree(weights = weight_jac)) 
 
 # # Inspect
 g_bib %N>% as_tibble() %>% skimr::skim()
 g_bib %E>% as_tibble() %>% skimr::skim()
 
+# Further restrictions
+g_bib <- g_bib  %N>%
+  filter(percent_rank(dgr_jac) >= cutof_node_pct_bib) %E>% 
+  filter(percent_rank(weight_jac) >= cutof_edge_pct_bib) %N>%
+  filter(!node_is_isolated())
+
 # Community Detection
 g_bib <- g_bib %N>%
-  mutate(com = group_louvain(weights = weight)) %>%
+  mutate(com = group_louvain(weights = weight_jac)) %>%
   morph(to_split, com) %>% 
-  mutate(dgr_int = centrality_degree(weights = weight)) %N>%
+  mutate(dgr_int = centrality_degree(weights = weight_jac)) %N>%
   unmorph()
 
-g_bib %N>% as_tibble() %>% count(com)
+g_bib %N>% as_tibble() %>% count(com, sort = TRUE)
 
 # Community size restriction
 g_bib <- g_bib %N>%
@@ -111,13 +132,14 @@ g_bib <- g_bib %N>%
 
 # Update degree
 g_bib <- g_bib %N>%
-  mutate(dgr = centrality_degree(weights = weight))
+  mutate(dgr = centrality_degree(weights = weight),
+         dgr_jac = centrality_degree(weights = weight_jac))
 
 # Save the objects we need lateron
 g_bib %>% saveRDS("../temp/g_bib.RDS")
 
 ### Merge with main data
-M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name, dgr, com, dgr_int), by = c('XX' = 'name')) %>%
+M_bib <- M %>% select(XX) %>% inner_join(g_bib %N>% as_tibble() %>% select(name, dgr, dgr_jac, com, dgr_int), by = c('XX' = 'name')) %>%
   distinct(XX, .keep_all = TRUE) 
 
 # Save and remove
@@ -126,12 +148,12 @@ M_bib %>% saveRDS("../temp/M_bib.RDS")
 ### Aggregated Network
 require(RNewsflow)
 g_bib_agg <- g_bib %>%
-  network_aggregate(by = "com", edge_attribute = "weight", agg_FUN = sum)  %>%
+  network_aggregate(by = "com", edge_attribute = "weight_jac", agg_FUN = sum)  %>%
   as.undirected(mode = "collapse", edge.attr.comb = "sum") %>%
   as_tbl_graph(directed = FALSE) %N>%
   select(-name) %>%
   mutate(id = 1:n()) %E>%
-  rename(weight = agg.weight) %>%
+  rename(weight = agg.weight_jac) %>%
   select(from, to, weight)
 
 ## Weight edges
@@ -164,17 +186,18 @@ g_cit <- mat_cit %>% igraph::graph_from_adjacency_matrix(mode = "undirected", we
 
 # Restrict the network
 g_cit <- g_cit %E>% 
-  filter(weight >= cutof_edge_cit) %E>%
-  filter(percent_rank(weight) >= cutof_edge_pct_cit) %N>%
-  filter(!node_is_isolated()) %N>%
-  mutate(dgr = centrality_degree(weights = weight)) %N>%
-  filter(dgr >= cutof_node_cit) %N>% 
-  filter(percent_rank(dgr) >= cutof_node_pct_cit)
+  filter(weight >= cutof_edge_cit) %N>%
+  filter(!node_is_isolated())
 
-## JACCARD weighting # NOTE: Only in cit network
-#g_cit <- g_cit %E>%
-#  mutate(weight = weight / (.N()$dgr[from] + .N()$dgr[to] - weight) ) %N>%
-#  mutate(dgr = centrality_degree(weights = weight))
+g_cit <- g_cit %N>%
+  mutate(dgr = centrality_degree(weights = weight)) %N>%
+  filter(dgr >= cutof_node_cit) 
+
+# Further restrictions
+g_cit <- g_cit %N>% 
+  filter(percent_rank(dgr) >= cutof_node_pct_cit) %E>%
+  filter(percent_rank(weight) >= cutof_edge_pct_cit) %N>%
+  filter(!node_is_isolated())
 
 # # Inspect
 g_cit %N>% as_tibble() %>% skimr::skim()
@@ -186,6 +209,8 @@ g_cit <- g_cit %N>%
   morph(to_split, com) %>% 
   mutate(dgr_int = centrality_degree(weights = weight)) %>%
   unmorph()
+
+g_cit %N>% as_tibble() %>% count(com)
 
 # Community size restriction
 g_cit <- g_cit %N>%
@@ -228,7 +253,9 @@ rm(mat_cit, g_cit, g_cit_agg)
 
 #### 2 mode network TODO
 rownames(M) <- M %>% pull(XX)
-m_2m <- M %>% as.data.frame() %>% cocMatrix(Field = "CR", sep = ";", short = FALSE)
+m_2m <- M %>% 
+  semi_join(M_bib) %>%
+  as.data.frame() %>% cocMatrix(Field = "CR", sep = ";", short = FALSE)
 
 g_2m <- m_2m %>% igraph::graph_from_incidence_matrix(directed = TRUE, mode = 'out', multiple = FALSE) %>% 
   igraph::simplify() 
@@ -281,24 +308,6 @@ text_tidy %<>%
            str_squish() 
   )  %>%
   drop_na() 
-
-
-# # Replace some known shortcuts (not sure if that improves)
-# text_tidy %<>%
-#   mutate(AB = AB %>% str_replace_all(c(
-#     "multi[ -]level[ -]perspective" = "mlp",
-#     "socio[ -]technical[ -]transition[s]?" = "sts",
-#     "technological[ -]innovation[ -]system[s]?" = "tis",
-#     "regional[ -]innovation[ -]system[s]?" = "ris",
-#     "nationall[ -]innovation[ -]system[s]?" = "nis",
-#     "large technological system[s]?" = "lts",
-#     "socio[ -]technical[ -]system[s]?" = "sts",
-#     "strategic niche management" = "strategic-niche-management",
-#     "innovation[ -]system[s]?" = "innovation-system",
-#     "system[s]?[ -]of[ -]innovation" = "innovation-system",
-#     "sustainable[ -]transition[s]?" = "sustainability-transition",
-#     "sustainability[ -]transition[s]?" = "sustainability-transition")) %>%
-#       str_replace_all("-", "_"))
 
 text_tidy %<>% 
   unnest_ngrams(term, AB, ngram_delim = ' ', n_min = 1, n = 3)
@@ -366,10 +375,10 @@ text_dtm <- text_tidy %>%
 #     verbose = TRUE
 # )
 # 
-# find_topics %>% FindTopicsNumber_plot() # Taking 5 topics
+# find_topics %>% FindTopicsNumber_plot() # Taking 7 topics
 
 # LDA
-text_lda <- text_dtm %>% LDA(k = 5, method= "Gibbs", control = list(seed = 1337))
+text_lda <- text_dtm %>% LDA(k = 7, method= "Gibbs", control = list(seed = 1337))
 
 
 ### LDA Viz
