@@ -53,7 +53,8 @@ knitr::opts_chunk$set(echo = FALSE,
 
 ```{r}
 M <- readRDS("../../temp/M.RDS") %>% as_tibble()
-M %<>% distinct(DI, .keep_all = TRUE)
+M %<>% distinct(DI, .keep_all = TRUE) %<>%
+  filter(PY <= 2021)
 ```
 
 # General Overview over EIST articles
