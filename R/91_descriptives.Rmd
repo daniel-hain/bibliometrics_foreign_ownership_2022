@@ -147,7 +147,7 @@ text_lda_gamma %<>% left_join(topic_names, by = 'topic')
 
 
 ```{r}
-mycol_lda <- text_lda_beta %>% gg_color_select(cat = topic_name, pal = "Dark2")
+mycol_lda <- text_lda_beta %>% gg_color_select(cat = topic_name, pal = "Paired")
 ```
 
 
@@ -188,7 +188,7 @@ text_lda_gamma %>%
   select(PY, topic_name, weight, weight_rel) %>%
   filter(PY >= 1998 & PY <= 2021) %>%
   arrange(PY, topic_name) %>%
-  plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic_name,  pal = "Dark2", label = TRUE,
+  plot_summary_timeline(y1 = weight, y2 = weight_rel, t = PY, by = topic_name,  pal = "Paired", label = TRUE,
                         y1_text = "Topic popularity annualy", y2_text = "Share of topic annually")
 ```
 
@@ -491,8 +491,6 @@ rm(M_threefield)
 ```
 
 
-<!--- 
-
 ### Conceptual trajectories: Historical citation path analysis
 
 ```{r}
@@ -508,5 +506,5 @@ histResults %>% histPlot(n =50, size = 10, labelsize = 7.5)
 rm(histResults)
 ```
 
----> 
+
 

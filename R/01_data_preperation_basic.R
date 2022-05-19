@@ -23,7 +23,7 @@ library(tidygraph)
 # Select Seed articels
 ############################################################################
 
-files <- list.files(path = '../input/', pattern = 'scopus_',full.names = TRUE)
+files <- list.files(path = '../input/', pattern = 'scopus_query',full.names = TRUE)
 
 # Load bibliographic data
 M <- convert2df(file = files, dbsource = "scopus", format = "bibtex")
@@ -64,9 +64,8 @@ M %>% saveRDS("../temp/M_all.RDS")
 
 # Number of cited references and citations
 M %<>% 
-  mutate(TC_year = TC / (2023 - PY)) %>%
-  filter(TC_year >= 1) %>%
-  filter(percent_rank(TC_year) >= 0.5)
+  mutate(TC_year = TC / (2023 - PY)) 
+# %>% filter(TC_year >= 1) %>% filter(percent_rank(TC_year) >= 0.5)
 
 # Save 
 M %>% saveRDS("../temp/M.RDS")
@@ -367,7 +366,7 @@ text_dtm <- text_tidy %>%
 # 
 # find_topics <- text_dtm %>%
 #   FindTopicsNumber(
-#     topics = seq(from = 4, to = 10, by = 1),
+#     topics = seq(from = 4, to = 15, by = 1),
 #     metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
 #     method = "Gibbs",
 #     control = list(seed = 1337),
@@ -375,10 +374,10 @@ text_dtm <- text_tidy %>%
 #     verbose = TRUE
 # )
 # 
-# find_topics %>% FindTopicsNumber_plot() # Taking 7 topics
+# find_topics %>% FindTopicsNumber_plot() # Taking 10 topics
 
 # LDA
-text_lda <- text_dtm %>% LDA(k = 7, method= "Gibbs", control = list(seed = 1337))
+text_lda <- text_dtm %>% LDA(k = 10, method= "Gibbs", control = list(seed = 1337))
 
 
 ### LDA Viz
